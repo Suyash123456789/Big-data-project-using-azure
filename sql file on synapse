@@ -1,0 +1,57 @@
+create schema gold
+create view gold.final
+AS
+SELECT
+    *
+FROM
+    OPENROWSET(
+        BULK 'https://olistdatastoragesuyash.dfs.core.windows.net/olistdata/silver/',
+        FORMAT = 'PARQUET'
+    ) AS result1
+
+SELECT * from gold.final
+
+
+create view gold.final2
+AS
+SELECT
+    *
+FROM
+    OPENROWSET(
+        BULK 'https://olistdatastoragesuyash.dfs.core.windows.net/olistdata/silver/',
+        FORMAT = 'PARQUET'
+    ) AS result2
+WHERE order_status='delivered'
+
+SELECT * from gold.final2
+
+
+-- Make sure you are in a user database (not master)
+CREATE MASTER KEY ENCRYPTION BY PASSWORD = 'Strong#Passw0rd!';
+
+CREATE DATABASE SCOPED CREDENTIAL MyManagedIdentity
+  WITH IDENTITY = 'Managed Identity';  -- use this literal
+
+
+select * from sys.database_credentials
+
+
+CREATE EXTERNAL FILE FORMAT extfileformat WITH (
+    FORMAT_TYPE = PARQUET,
+    DATA_COMPRESSION = 'org.apache.hadoop.io.compress.SnappyCodec'
+);
+
+CREATE EXTERNAL DATA SOURCE goldlayer WITH (
+    LOCATION = 'https://olistdatastoragesuyash.dfs.core.windows.net/olistdata/gold/',
+    CREDENTIAL = MyManagedIdentity
+);
+
+
+CREATE EXTERNAL TABLE gold.finaltable WITH (
+        LOCATION = 'Serving',
+        DATA_SOURCE = goldlayer,
+        FILE_FORMAT = extfileformat
+) AS
+SELECT * FROM gold.final2;
+
+
